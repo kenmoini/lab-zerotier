@@ -87,6 +87,32 @@ podman start zerotier
 
 podman exec zerotier zerotier-cli info
 podman exec zerotier zerotier-cli listnetworks
+
+# If this node is routing
+echo "net.ipv4.ip_forward=1" > /etc/sysctl.d/99-ipv4forward.conf
+sysctl -p /etc/sysctl.d/99-ipv4forward.conf
+
+# If this node is a bridge
+ZT_IFACE=$(ip a | grep ': zt' | cut -d ' ' -f 2 | sed 's/://g')
+BRIDGE_IFACE="bridge0"
+BRIDGE_ZONE=$(firewall-cmd --get-active-zones | grep bridge0 -B 1 | head -n 1)
+TARGET_ZONE="internal"
+
+## Add the Ifaces to the internal zone
+firewall-cmd --change-zone=$ZT_IFACE --zone=$TARGET_ZONE
+firewall-cmd --change-zone=$BRIDGE_IFACE --zone=$TARGET_ZONE
+
+## Add Masquerading to the Zone
+firewall-cmd --zone=$TARGET_ZONE --add-masquerade
+
+## Enable intra-zone forwarding
+firewall-cmd --zone=$TARGET_ZONE --add-forward
+
+## Add cockpit to internal zone, optional
+firewall-cmd --zone=$TARGET_ZONE --add-service=cockpit
+
+## Make the changes permanent
+firewall-cmd --runtime-to-permanent
 ```
 
 ---
