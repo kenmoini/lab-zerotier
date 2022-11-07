@@ -1,0 +1,54 @@
+(block zerotier
+    (blockinherit container)
+    (allow process process ( capability ( chown dac_override fowner fsetid kill net_admin net_bind_service setfcap setgid setpcap setuid sys_admin sys_chroot ))) 
+
+    (allow process tun_tap_device_t ( blk_file ( getattr read write append ioctl lock open ))) 
+    (allow process tun_tap_device_t ( chr_file ( getattr read write append ioctl lock open ))) 
+    (allow process var_lib_t ( dir ( add_name create getattr ioctl lock open read remove_name rmdir search setattr write ))) 
+    (allow process var_lib_t ( file ( append create getattr ioctl lock map open read rename setattr unlink write ))) 
+    (allow process var_lib_t ( fifo_file ( getattr read write append ioctl lock open ))) 
+    (allow process var_lib_t ( sock_file ( append getattr open read write )))
+
+    (allow process node_t (tcp_socket ( node_bind )))
+    (allow process node_t (udp_socket ( node_bind )))
+
+    (allow process http_port_t (tcp_socket ( name_connect name_bind )))
+    (allow process unreserved_port_t (tcp_socket ( name_connect )))
+    (allow process unreserved_port_t (tcp_socket ( name_bind )))
+    (allow process unreserved_port_t (udp_socket ( name_bind )))
+
+    (allow process proc_net_t ( lnk_file ( read )))
+    (allow process proc_t ( dir ( search )))
+    (allow process proc_t ( lnk_file ( read )))
+
+    (allow process container_ro_file_t ( file ( read )))
+    (allow process container_runtime_t ( fd ( use )))
+    (allow process container_runtime_t ( fifo_file ( write )))
+
+    (allow process kernel_t (system ( module_request )))
+    (allow process container_file_t (lnk_file ( read )))
+    (allow process container_file_t (dir ( search )))
+
+    (allow process kernel_t (system ( module_request )))
+    (allow process container_file_t (lnk_file ( read )))
+    (allow process container_file_t (dir ( search )))
+
+    (allow process container_file_t (file ( entrypoint execute open read getattr map )))
+    (allow process container_file_t (chr_file ( read write )))
+    (allow process proc_net_t (file ( getattr open read )))
+
+    (allow process self (tcp_socket ( listen )))
+    (allow process self (dir ( search )))
+    (allow process self (netlink_route_socket ( bind create getattr nlmsg_read nlmsg_write read write )))
+    (allow process self (udp_socket ( create ioctl read write )))
+    (allow process self (process ( rlimitinh siginh fork noatsecure transition )))
+    (allow process self (fd ( use )))
+
+    (allow process process (tcp_socket ( listen )))
+    (allow process process (dir ( search )))
+    (allow process process (netlink_route_socket ( bind create getattr nlmsg_read nlmsg_write read write )))
+    (allow process process (udp_socket ( create ioctl read write )))
+    (allow process process (process ( rlimitinh siginh fork noatsecure transition )))
+    (allow process process (fd ( use )))
+
+)

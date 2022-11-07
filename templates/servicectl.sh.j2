@@ -1,0 +1,73 @@
+#!/bin/bash
+
+set -x
+
+###################################################################################
+# VARIABLES
+###################################################################################
+
+CONTAINER_NAME="{{ service.name }}"
+CONTAINER_SOURCE="{{ container_image }}"
+
+NETWORK="{{ container_network | default('--net=host') }}"
+
+ZT_NETWORKS="{{ service.networks | join(' ') }}"
+ZT_VOLUME="{{ service_containers_dir }}/${CONTAINER_NAME}/zt-volume:/var/lib/zerotier-one:z"
+
+###################################################################################
+# EXECUTION PREFLIGHT
+###################################################################################
+
+## Ensure there is an action arguement
+if [ -z "$1" ]; then
+  echo "Need action arguement of 'start', 'restart', or 'stop'!"
+  echo "${0} start|stop|restart"
+  exit 1
+fi
+
+
+################################################################################### SERVICE ACTION SWITCH
+case $1 in
+
+  ################################################################################# RESTART/STOP SERVICE
+  "restart" | "stop" | "start")
+    echo "Stopping container services if running..."
+
+    echo "Stopping ${CONTAINER_NAME} container..."
+    /usr/bin/podman kill ${CONTAINER_NAME}
+
+    echo "Removing ${CONTAINER_NAME} container..."
+    /usr/bin/podman rm -f -i ${CONTAINER_NAME}
+    ;;
+
+esac
+
+case $1 in
+
+  ################################################################################# RESTART/START SERVICE
+  "restart" | "start")
+    sleep 3
+
+    echo "Starting container services..."
+
+    # Deploy ${CONTAINER_NAME} container
+    echo -e "Deploying ${CONTAINER_NAME}...\n"
+
+    /usr/bin/podman create --name "${CONTAINER_NAME}" \
+      --cap-add=NET_ADMIN --cap-add=SYS_ADMIN \
+      ${NETWORK} \
+      --device /dev/net/tun \
+      -m 1Gi --cpus=1 \
+      -v ${ZT_VOLUME} \
+{% if configure_selinux|bool %}
+      --security-opt label=type:${CONTAINER_NAME}.process \
+{% endif %}
+      --healthcheck-command 'CMD-SHELL bash /healthcheck.sh' \
+      --healthcheck-interval=30s \
+      ${CONTAINER_SOURCE} ${ZT_NETWORKS}
+
+    /usr/bin/podman start ${CONTAINER_NAME}
+
+    ;;
+
+esac

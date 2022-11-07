@@ -1,0 +1,13 @@
+---
+# network site configurations
+zerotier_networks:
+
+  eagle-eye.kemo.network:
+  - name: caas-zerotier
+    networks:
+    - 88503383901a74ad
+
+  raza.kemo.labs:
+  - name: caas-zerotier
+    networks:
+    - 88503383901a74ad

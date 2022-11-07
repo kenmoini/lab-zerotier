@@ -1,0 +1,16 @@
+---
+# network site configurations
+
+zerotier_networks:
+  # The zerotier_networks object has items where the keys match the inventory_hostname
+  server1.example.com:
+  # In each item, there is a list of services to be created on the host
+  - name: caas-zerotier # The name of the service
+    networks: # The list of networks to join
+    - 88503383901a7bad
+
+  server2.example.com:
+  - name: caas-zerotier
+    networks:
+    - 88503383901a7bad
+    - 1234567890abcdef

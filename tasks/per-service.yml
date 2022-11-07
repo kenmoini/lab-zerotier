@@ -1,0 +1,73 @@
+---
+
+- name: Create CaaS Directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+  with_items:
+    - "{{ service_containers_dir }}/{{ service.name }}/"
+    - "{{ service_containers_dir }}/{{ service.name }}/scripts"
+    - "{{ service_containers_dir }}/{{ service.name }}/zt-volume"
+
+- name: Template CaaS deployment files - servicectl.sh.j2
+  ansible.builtin.template:
+    src: servicectl.sh.j2
+    dest: "{{ service_containers_dir }}/{{ service.name }}/scripts/servicectl.sh"
+    owner: root
+    group: root
+    mode: 0755
+
+- name: "Template CaaS deployment files - {{ service.name }}.service"
+  ansible.builtin.template:
+    src: service.j2
+    dest: "/etc/systemd/system/{{ service.name }}.service"
+    owner: root
+    group: root
+    mode: 0755
+
+- name: "Template CaaS deployment files - SELinux Module"
+  ansible.builtin.template:
+    src: zerotier.cil.j2
+    dest: "{{ service_containers_dir }}/{{ service.name }}/{{ service.name }}.cil"
+    owner: root
+    group: root
+    mode: 0744
+
+- name: SELinux Fun Times!
+  when: configure_selinux|bool
+  block:
+    - name: Detect to see if the SELinux module already exists
+      ansible.builtin.shell: "semodule -l | { grep -w {{ service.name }} || true; }"
+      register: selinux_module_exists
+
+    - name: Remove the SELinux module if it already exists
+      ansible.builtin.shell: "semodule -r {{ service.name }}"
+      when: selinux_module_exists.stdout == service.name
+
+    - name: Install the SELinux module
+      ansible.builtin.shell: "semodule -i {{ service_containers_dir }}/{{ service.name }}/{{ service.name }}.cil"
+
+    - name: Add additional SELinux Booleans
+      ansible.posix.seboolean:
+        name: "{{ bool_item }}"
+        state: yes
+        persistent: yes
+      loop:
+        - nis_enabled
+        - virt_sandbox_use_all_caps
+        - virt_use_nfs
+        - mmap_low_allowed
+      loop_control:
+        loop_var: bool_item
+
+    - name: Add additional SELinux port rules
+      community.general.seport:
+        ports: 9993
+        proto: tcp
+        setype: http_port_t
+        state: present
+
+    - name: Reload the Policy
+      ansible.builtin.shell: "semodule -R"

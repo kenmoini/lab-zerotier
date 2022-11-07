@@ -1,0 +1,87 @@
+---
+- name: Deploy the ZeroTier Container-as-a-Service
+  hosts: all
+  gather_facts: true
+  become: true
+  vars:
+    # service_containers_dir: Where will the files for this service be stored
+    service_containers_dir: /opt/caas
+
+    container_image: docker.io/zerotier/zerotier:latest
+
+    install_packages: true
+    configure_firewalld: true
+    configure_selinux: true
+
+  tasks:
+
+    - name: Read in the site config variables
+      include_vars:
+        file: vars/site_config.yml
+
+    - name: Ensure the needed packages are installed
+      when: install_packages|bool
+      package:
+        name: "{{ package_item }}"
+        state: latest
+      loop:
+      - podman
+      - udica
+      - firewalld
+      loop_control:
+        loop_var: package_item
+
+    - name: Start FirewallD
+      when: configure_firewalld|bool
+      ansible.builtin.service:
+        name: firewalld
+        state: started
+        enabled: true
+
+    - name: Ensure the needed ports are open
+      when: configure_firewalld|bool
+      ansible.posix.firewalld:
+        state: enabled
+        port: "{{ port_item }}"
+        permanent: yes
+        immediate: yes
+      loop:
+      - 9993/tcp
+      - 9993/udp
+      loop_control:
+        loop_var: port_item
+
+    - name: Create Service Containers Directory
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+      with_items:
+        - "{{ service_containers_dir }}"
+
+    - name: Pre-pull the image
+      containers.podman.podman_image:
+        name: "{{ container_image }}"
+        pull: yes
+        force: yes
+
+    - name: Run per-service configuration
+      include_tasks: tasks/per-service.yml
+      loop: "{{ zerotier_networks[inventory_hostname] }}"
+      loop_control:
+        loop_var: service
+
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: Start CaaS
+      ansible.builtin.service:
+        name: "{{ service.name }}"
+        state: restarted
+        enabled: yes
+      loop: "{{ zerotier_networks[inventory_hostname] }}"
+      loop_control:
+        pause: 10
+        loop_var: service
