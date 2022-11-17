@@ -9,7 +9,9 @@
 
     container_image: docker.io/zerotier/zerotier:latest
 
+    update_system: true
     install_packages: true
+    configure_cockpit: true
     configure_firewalld: true
     configure_selinux: true
 
@@ -19,6 +21,12 @@
       include_vars:
         file: vars/site_config.yml
 
+    - name: Ensure the latest system packages are installed
+      when: update_system|bool
+      package:
+        name: "*"
+        state: latest
+
     - name: Ensure the needed packages are installed
       when: install_packages|bool
       package:
@@ -27,9 +35,18 @@
       loop:
       - podman
       - udica
+      - cockpit
+      - cockpit-podman
       - firewalld
       loop_control:
         loop_var: package_item
+
+    - name: Start Cockpit
+      when: configure_cockpit|bool
+      ansible.builtin.service:
+        name: cockpit.socket
+        state: started
+        enabled: true
 
     - name: Start FirewallD
       when: configure_firewalld|bool
@@ -48,6 +65,18 @@
       loop:
       - 9993/tcp
       - 9993/udp
+      loop_control:
+        loop_var: port_item
+
+    - name: Ensure the needed ports are open for Cockpit
+      when: configure_firewalld|bool and configure_cockpit|bool
+      ansible.posix.firewalld:
+        state: enabled
+        port: "{{ port_item }}"
+        permanent: yes
+        immediate: yes
+      loop:
+      - 9090/tcp
       loop_control:
         loop_var: port_item
 

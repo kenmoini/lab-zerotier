@@ -47,7 +47,7 @@
       when: selinux_module_exists.stdout == service.name
 
     - name: Install the SELinux module
-      ansible.builtin.shell: "semodule -i {{ service_containers_dir }}/{{ service.name }}/{{ service.name }}.cil"
+      ansible.builtin.shell: "semodule -i /usr/share/udica/templates/base_container.cil {{ service_containers_dir }}/{{ service.name }}/{{ service.name }}.cil"
 
     - name: Add additional SELinux Booleans
       ansible.posix.seboolean:

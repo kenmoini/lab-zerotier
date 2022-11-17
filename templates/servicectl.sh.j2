@@ -57,7 +57,7 @@ case $1 in
       --cap-add=NET_ADMIN --cap-add=SYS_ADMIN \
       ${NETWORK} \
       --device /dev/net/tun \
-      -m 1Gi --cpus=1 \
+      -m 1g --cpus=1 \
       -v ${ZT_VOLUME} \
 {% if configure_selinux|bool %}
       --security-opt label=type:${CONTAINER_NAME}.process \
